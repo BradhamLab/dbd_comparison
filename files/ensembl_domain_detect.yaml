@@ -1,0 +1,13 @@
+tf_ids: data/tf_wray_ids.txt
+seq_ids: output/ensembl_output/protein_ids.txt
+protein_fasta: /projectnb/bradham/data/ReferenceSequences/wray-genome/L_var_proteins.fasta
+transcript_fasta: /projectnb/bradham/data/ReferenceSequences/wray-genome/L_var_transcripts.fasta
+annos: /projectnb/bradham/data/ReferenceSequences/wray-genome/annotations/master_top_hits.txt
+hmm: /projectnb/bradham/PFAM/Pfam-A.hmm
+eval: 0.001
+outdir: "output/ensembl_domains/"
+input:
+  tf_fasta: output/ensembl_sequences/ensembl_proteins.fa
+allowed_domains:
+  domain_regex: ["^zf-", "T-box", "^bZIP", "^Homeobox", "^GATA", "DNA-bind", "HMG-box", "Winged helix"]
+  files: ["data/HMG-box_clans.txt", "data/HTH_clans.txt", "data/Leucine-zipper_clans.txt", "data/OB-fold_clans.txt", "data/Zinc-finger_clans.txt", 'data/misc_domains.txt']
