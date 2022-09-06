@@ -22,6 +22,7 @@ def pident_plot(df, threshold=0.7):
             col_wrap=5,
             facet_kws={"sharey": False, "sharex": True},
             legend=False,
+            bins=12,
         )
         for ax in plot.axes:
             ax.axvline(x=threshold, ls="--", c="black", lw=2)
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     except NameError:
         snakemake = None
     if snakemake is not None:
-        logging.basicConfig(filename=snakemake.log[0], leve=logging.WARNING)
+        logging.basicConfig(filename=snakemake.log[0], level=logging.WARNING)
         lookup = pd.read_csv(snakemake.input["id2name"])
         dbd_df = pd.read_csv(snakemake.input["csv"], index_col=0).assign(
             TF=lambda df_: df_.query_id.map(lookup.set_index("gene_id").name).apply(
@@ -97,8 +98,6 @@ if __name__ == "__main__":
         # set up motif table file
         if motif_table.exists():
             motif_table.unlink()
-        with open(motif_table, "w") as handle:
-            handle.write("\t".join(HEADER) + "\n")
         selected = dbd_df.query("pident >= @pident_threshold")
         missed_TFs = set(dbd_df.TF) - set(selected.TF)
 
@@ -106,7 +105,12 @@ if __name__ == "__main__":
             motif = selected.loc[idx, "motif_id"]
             gene = selected.loc[idx, "TF"].replace("Lv-", "Sp-")
             with open(input_dir.joinpath(motif + ".txt"), "r") as handle:
-                pwm = motifs.read(handle, "pfm-four-columns")
+                try:
+                    pwm = motifs.read(handle, "pfm-four-columns")
+                except:
+                    logging.warning(
+                        "Unable to open file: %s", input_dir.joinpath(motif + ".txt")
+                    )
                 pwm.id = pwm.consensus
                 pwm.name = pwm.consensus
             # have to scale counts bc otherwise all 0 in clusterbuster format
@@ -114,4 +118,7 @@ if __name__ == "__main__":
             with open(output_dir.joinpath(motif + ".cb"), "w") as handle:
                 handle.write(pwm.format("clusterbuster"))
             with open(motif_table, "a") as handle:
-                handle.write(get_line(motif, gene, pwm.consensus))
+                handle.write(
+                    ",".join([motif, "_".join(motif.split("_")[2:]), gene]) + "\n"
+                )
+                # handle.write(get_line(motif, gene, pwm.consensus))
