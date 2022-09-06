@@ -13,9 +13,10 @@ def scale_counts(pwm, scalar=100):
 
 
 def pident_plot(df, threshold=0.7):
-    with sns.plotting_context("talk"):
+    with sns.plotting_context("poster"):
+        fig = plt.figure(figsize=(6, 6))
         plot = sns.displot(
-            data=dbd_df,
+            data=dbd_df.sort_values("TF"),
             x="pident",
             hue="TF",
             col="TF",
