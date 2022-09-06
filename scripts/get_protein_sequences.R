@@ -27,6 +27,10 @@ get_mart <- function(species) {
         return(
             useEnsemblGenomes(biomart = "plants_mart", dataset = ensembl_db_name(species))
         )
+    } else if (species == "Saccharomyces_cerevisiae") {
+        return(
+            useEnsemblGenomes(biomart = "fungi_mart", dataset = ensembl_db_name(species))
+        )
     } else {
         return(
             useEnsembl(biomart = "ensembl", dataset = ensembl_db_name(species),  mirror = "useast")
@@ -38,11 +42,11 @@ get_mart <- function(species) {
 if (exists("snakemake")) {
     motif_df <- read.csv(snakemake@input[["motif_table"]]) %>% dplyr::filter(source == "Ensembl")
     out_dir <- snakemake@output[[1]]
-    logfile <- file(snakemake@log[[1]])
+    logfile <- snakemake@log[[1]]
 } else {
     motif_df <- read.csv("data/motif_pwm_df.csv") %>% dplyr::filter(source == "Ensembl")
     out_dir <- "output/ensembl_sequences"
-    logfile <- file("logs/ensembl_download.log")
+    logfile <- "logs/ensembl_download.log"
 }
 if (! dir.exists(out_dir)) {
     dir.create(out_dir)
@@ -54,7 +58,21 @@ pb <- txtProgressBar(
 )
 progress = 0
 for (specie in unique(motif_df$species)) {
-    mart <- get_mart(specie)
+    tryCatch({
+        mart <- get_mart(specie)
+    }, error = function(cond) {
+        cat(
+            stringr::str_c("Unable to connect to Ensembl mart for ",specie),
+            '\n',
+            file = logfile,
+            sep='',
+            append=TRUE
+        )
+        return(NULL)
+    })
+    if (is.null(mart)) {
+        next
+    }
     # TODO: ensembl_gene_id fails for yeast
     seq <- tryCatch( {
         biomaRt::getSequence(
@@ -73,10 +91,16 @@ for (specie in unique(motif_df$species)) {
         )
     } else {
         writeLines(stringr::str_c("failed with ", specie), logfile)
+        cat(
+            stringr::str_c("Failed with ", specie),
+            '\n',
+            file = logfile,
+            sep='',
+            append=TRUE
+        )
     }
     progress <- progress + 1
     setTxtProgressBar(pb, progress)
 }
 close(pb)
-close(logfile)
 
