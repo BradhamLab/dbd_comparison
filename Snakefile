@@ -194,8 +194,7 @@ rule combine_ensembl_fasta:
     output:
         ENSEMBL_OUT.joinpath("ensembl_proteins.fa"),
     shell:
-        "cat {input.ensembl}/*.fa > {output} "
-        "cat {input.external}/*.fa >> {output}"
+        "cat {input.ensembl}/*.fa {input.external}/*.fa > {output}"
 
 
 rule ensembl_sequence_ids:
@@ -267,7 +266,7 @@ rule select_motifs:
         pident=0.7,
     output:
         motif_dir=directory("output/retained_motifs"),
-        motif_table="output/motif_table.tsv",
+        motif_table="output/motif_table.csv",
         png="output/pident_distributions.png",
     script:
         "scripts/format_and_filter_motifs.py"
