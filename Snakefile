@@ -177,7 +177,7 @@ rule download_ensembl_sequences:
     input:
         motif_table="data/motif_pwm_df.csv",
     log:
-        "logs/ensembl_download.log"
+        "logs/ensembl_download.log",
     output:
         directory("output/ensembl_sequences/"),
     script:
@@ -189,7 +189,7 @@ ENSEMBL_OUT = Path(config["output"]["ensembl_dir"])
 
 rule combine_ensembl_fasta:
     input:
-        ensembl="output/ensembl_sequences/",
+        ensembl=ancient("output/ensembl_sequences/"),
         external="data/external_sequences/",
     output:
         ENSEMBL_OUT.joinpath("ensembl_proteins.fa"),
@@ -257,7 +257,7 @@ rule compare_dbds:
 
 rule select_motifs:
     input:
-        id2name="all_tf_models.csv",
+        id2name="all_tf_models.csv",  #update this with updated thing from cistarget
         csv="output/dbd_alignment.csv",
         motif_dir="data/cisbg_motifs",
     log:
@@ -267,6 +267,7 @@ rule select_motifs:
     output:
         motif_dir=directory("output/retained_motifs"),
         motif_table="output/motif_table.csv",
-        png="output/pident_distributions.png",
+        pident_plot="output/pident_distributions.png",
+        score_plot="output/motif_scores.png",
     script:
         "scripts/format_and_filter_motifs.py"
