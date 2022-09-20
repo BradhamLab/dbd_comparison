@@ -2,6 +2,7 @@ library(biomaRt)
 library(dplyr)
 library(stringr)
 
+# As of 09/20/2022, bioMart simply fails with these species.
 EXTRA_ENSEMBL_SPECIES <- c(
     "Arabidopsis_thaliana",
     "Arabidopsis_lyrata",
@@ -123,4 +124,3 @@ for (specie in unique(motif_df$species)) {
     setTxtProgressBar(pb, progress)
 }
 close(pb)
-
