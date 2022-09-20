@@ -7,7 +7,7 @@ ensembl_db_name <- function(specie) {
         return("clfamiliaris_gene_ensembl")
     }
     suffix <- '_gene_ensembl'
-    if (specie %in% c("Arabidopsis_thaliana", "Arabidopsis_lyrata")) {
+    if (specie %in% c("Arabidopsis_thaliana", "Arabidopsis_lyrata", "Saccharomyces_cerevisiae")) {
         suffix <- '_eg_gene'
     }
     concat_ln <- function(two_part_str) {
@@ -56,13 +56,19 @@ pb <- txtProgressBar(
     max = length(unique(motif_df$species)),
     initial=0
 )
+cat(stringr::str_c("Downloading sequences via BioMaRt "),
+    '\n',
+    file = logfile,
+    sep='',
+    append=FALSE
+
+)
 progress = 0
 for (specie in unique(motif_df$species)) {
     tryCatch({
         mart <- get_mart(specie)
     }, error = function(cond) {
-        cat(
-            stringr::str_c("Unable to connect to Ensembl mart for ",specie),
+        cat(stringr::str_c("Unable to connect to Ensembl mart for ",specie),
             '\n',
             file = logfile,
             sep='',
@@ -90,9 +96,7 @@ for (specie in unique(motif_df$species)) {
             file.path(out_dir, stringr::str_c(specie, ".fa"))
         )
     } else {
-        writeLines(stringr::str_c("failed with ", specie), logfile)
-        cat(
-            stringr::str_c("Failed with ", specie),
+        cat(stringr::str_c("Failed with ", specie),
             '\n',
             file = logfile,
             sep='',
