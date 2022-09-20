@@ -2,12 +2,20 @@ library(biomaRt)
 library(dplyr)
 library(stringr)
 
+EXTRA_ENSEMBL_SPECIES = c(
+    "Arabidopsis_thaliana",
+    "Arabidopsis_lyrata",
+    "Saccharomyces_cerevisiae",
+    "Strongylocentrotus_purpuratus",
+    "Drosophila_melanogaster",
+    "Caenorhabditis_elegans",
+)
 ensembl_db_name <- function(specie) {
     if (specie == 'Canis_familiaris') {
         return("clfamiliaris_gene_ensembl")
     }
     suffix <- '_gene_ensembl'
-    if (specie %in% c("Arabidopsis_thaliana", "Arabidopsis_lyrata", "Saccharomyces_cerevisiae")) {
+    if (specie %in% EXTRA_ENSEMBL_SPECIES) {
         suffix <- '_eg_gene'
     }
     concat_ln <- function(two_part_str) {
@@ -31,6 +39,10 @@ get_mart <- function(species) {
         return(
             useEnsemblGenomes(biomart = "fungi_mart", dataset = ensembl_db_name(species))
         )
+    } else if (species %in% c("Strongylocentrotus_purpuratus", "Drosophila_melanogaster", "Caenorhabditis_elegans")) {
+        return(
+            useEnsemblGenomes(biomart = "metazoa_mart", dataset = ensembl_db_name(species))
+        )
     } else {
         return(
             useEnsembl(biomart = "ensembl", dataset = ensembl_db_name(species),  mirror = "useast")
@@ -40,11 +52,15 @@ get_mart <- function(species) {
 }
 
 if (exists("snakemake")) {
-    motif_df <- read.csv(snakemake@input[["motif_table"]]) %>% dplyr::filter(source == "Ensembl")
+    motif_df <- read.csv(snakemake@input[["motif_table"]]) %>% 
+        dplyr::mutate(source = replace(source, source != "Misc", "Ensembl")) %>%
+        dplyr::filter(source == "Ensembl")
     out_dir <- snakemake@output[[1]]
     logfile <- snakemake@log[[1]]
 } else {
-    motif_df <- read.csv("data/motif_pwm_df.csv") %>% dplyr::filter(source == "Ensembl")
+    motif_df <- read.csv("data/motif_pwm_df.csv") %>% 
+        dplyr::mutate(source = replace(source, source != "Misc", "Ensembl")) %>%
+        dplyr::filter(source == "Ensembl")
     out_dir <- "output/ensembl_sequences"
     logfile <- "logs/ensembl_download.log"
 }
