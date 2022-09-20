@@ -2,13 +2,13 @@ library(biomaRt)
 library(dplyr)
 library(stringr)
 
-EXTRA_ENSEMBL_SPECIES = c(
+EXTRA_ENSEMBL_SPECIES <- c(
     "Arabidopsis_thaliana",
     "Arabidopsis_lyrata",
     "Saccharomyces_cerevisiae",
     "Strongylocentrotus_purpuratus",
     "Drosophila_melanogaster",
-    "Caenorhabditis_elegans",
+    "Caenorhabditis_elegans"
 )
 ensembl_db_name <- function(specie) {
     if (specie == 'Canis_familiaris') {
