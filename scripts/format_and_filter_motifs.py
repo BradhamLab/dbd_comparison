@@ -215,7 +215,7 @@ if __name__ == "__main__":
         for tf, each in best_motifs.items():
             # have to scale counts bc otherwise all 0 in clusterbuster format
             scale_counts(each["motif"], 100)
-            with open(output_dir.joinpath(motif + ".cb"), "w") as handle:
+            with open(output_dir.joinpath(each["name"] + ".cb"), "w") as handle:
                 handle.write(each["motif"].format("clusterbuster"))
             with open(motif_table, "a") as handle:
                 handle.write(

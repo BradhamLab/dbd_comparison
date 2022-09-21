@@ -259,7 +259,7 @@ rule select_motifs:
     input:
         id2name="all_tf_models.csv",  #update this with updated thing from cistarget
         csv="output/dbd_alignment.csv",
-        motif_dir="data/cisbg_motifs",
+        motif_dir="data/cisbp_motifs",
     log:
         "logs/motif_selection.log",
     params:

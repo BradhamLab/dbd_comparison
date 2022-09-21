@@ -6,11 +6,13 @@ hmm: /projectnb/bradham/PFAM/Pfam-A.hmm
 eval: 0.001
 input:
   id_to_name: id_to_tf.csv
+  motif_dir: "data/informative_motifs"
 allowed_domains:
   domain_regex: ["^zf-", "T-box", "^bZIP", "^Homeobox", "^GATA", "DNA-bind", "HMG-box", "Winged helix"]
   files: ["data/HMG-box_clans.txt", "data/HTH_clans.txt", "data/Leucine-zipper_clans.txt", "data/OB-fold_clans.txt", "data/Zinc-finger_clans.txt", 'data/misc_domains.txt']
 blast_db: "swissprot.fasta"
 output:
+  dir: "output"
   ensembl_dir: "output/ensembl_output"
 workflows:
   domain_detection:
