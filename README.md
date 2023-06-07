@@ -26,3 +26,28 @@ To install the pipeline, simply clone this repository. The pipeline requires `sn
 ## Configuration
 
 To modify the domains and sequences of interest, modify the [configuration file](config.yaml) as appropriate.
+
+The expected entries are annotated below:
+
+```yaml
+tf_ids: data/all_tf_ids.txt  # file containing list of ids for TFs of interest
+protein_fasta: /projectnb/bradham/data/ReferenceSequences/wray-genome/L_var_proteins.fasta  # protein fasta file for query genome
+transcript_fasta: /projectnb/bradham/data/ReferenceSequences/wray-genome/L_var_transcripts.fasta  #  transcript fasta file for query genome
+annos: /projectnb/bradham/data/ReferenceSequences/wray-genome/annotations/master_top_hits.txt  # genome annotations
+hmm: /projectnb/bradham/PFAM/Pfam-A.hmm  # hmm model for PFAM domains
+eval: 0.001   # minimum e-value
+input:  
+  id_to_name: data/all_tf_models.csv  # table matching TF ids to name
+  motif_dir: "data/informative_motifs"  # directory containing motif PWMs
+allowed_domains:  # regex and list of files containing whitelists for domains of interest
+  domain_regex: ["^zf-", "T-box", "^bZIP", "^Homeobox", "^GATA", "DNA-bind", "HMG-box", "Winged helix"]
+  files: ["data/HMG-box_clans.txt", "data/HTH_clans.txt", "data/Leucine-zipper_clans.txt", "data/OB-fold_clans.txt", "data/Zinc-finger_clans.txt", 'data/misc_domains.txt']
+blast_db: "swissprot.fasta"  # name of local BLAST database to use 
+output:
+  dir: "output"  # where to write output
+  ensembl_dir: "output/ensembl_output"  # where to save ensembl sequences
+workflows:
+  domain_detection:
+    snakefile: /projectnb/bradham/workflows/domain_identification/Snakefile  # location for domain identification workflow
+    ensembl_config: files/ensembl_domain_detect.yaml  # domain identification workflow configuration file for ensembl sequences. See the [repository]([pfam extraction workflow](https://github.com/BradhamLab/extract_pfam_domains/) for more information.
+```
