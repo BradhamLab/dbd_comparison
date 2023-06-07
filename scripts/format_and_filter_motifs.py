@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 import itertools
+import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,8 +17,20 @@ def scale_counts(pwm, scalar=100):
 
 
 def pident_plot(df, threshold=0.7):
-    with sns.plotting_context("poster"):
-        fig = plt.figure(figsize=(6, 6))
+    with sns.plotting_context(
+        "paper",
+        rc={
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "axes.labelsize": 12,
+            "xtick.majorsize": 1,
+            "ytick.majorsize": 1,
+            "font.sans-serif": "inter",
+            "savefig.dpi": 300,
+        },
+    ):
+        fig = plt.figure()
+        # dbd_df.TF = dbd_df.TF.str.replace("Lv-", "")
         plot = sns.displot(
             data=dbd_df.sort_values("TF"),
             x="pident",
@@ -27,10 +40,13 @@ def pident_plot(df, threshold=0.7):
             facet_kws={"sharey": False, "sharex": True},
             legend=False,
             bins=12,
+            height=1.5,
         )
         for ax in plot.axes:
-            ax.axvline(x=threshold, ls="--", c="black", lw=2)
+            ax.axvline(x=threshold, ls="--", c="black", lw=1)
             ax.yaxis.set_major_formatter(FormatStrFormatter("%d"))
+            ax.set_title(ax.get_title().replace("TF = ", ""), fontsize=10)
+        fig.subplots_adjust(hspace=0.02, wspace=0.02)
 
 
 HEADER = [
@@ -75,23 +91,12 @@ def get_line(motif_id, gene_name, consensus):
     )
 
 
-def score_motif(motif, background={"G": 0.35, "A": 0.15, "T": 0.15, "C": 0.35}):
-    motif.background = background
-    motif.pseudocounts = {k: 0.25 * v for k, v in background.items()}
-    info = 0
-    for nt, pos in itertools.product("GATC", range(motif.length)):
-        info += (
-            -1 * motif.pwm[nt][pos] * np.log(motif.pwm[nt][pos] / motif.background[nt])
-        )
-    return info
-
-
 def plot_motif_scores(*args, **kwargs):
     data = kwargs.pop("data")
     plot_df = data.assign(
         Rank=lambda df_: df_.score.rank(ascending=True), is_min=False
     ).rename(columns={"score": "I.C."})
-    plot_df.loc[plot_df["I.C."].idxmin(), "is_min"] = True
+    # plot_df.loc[plot_df["I.C."].idxmin(), "is_min"] = True
     ax = plt.gca()
     ax.set(aspect=1)
     ax.axis("off")
@@ -99,7 +104,7 @@ def plot_motif_scores(*args, **kwargs):
     hist_ax = ax.inset_axes([0.85, 0, 0.2, 1])
     for i in range(2):
         sns.scatterplot(
-            data=plot_df[plot_df.is_min == i],
+            data=plot_df[plot_df.selected == i],
             x="Rank",
             y="I.C.",
             hue="is_min",
@@ -112,7 +117,9 @@ def plot_motif_scores(*args, **kwargs):
     bins = "auto"
     if plot_df["I.C."].nunique() < 5:
         bins = 5
-    sns.histplot(data=plot_df, y="I.C.", ax=hist_ax, bins=bins, color="#7f7f7f")
+    sns.histplot(
+        data=plot_df.reset_index(), y="I.C.", ax=hist_ax, bins=bins, color="#7f7f7f"
+    )
     for i, p in enumerate(hist_ax.patches):
         if i == 0:
             p.set_facecolor("#d62728")
@@ -134,14 +141,16 @@ def score_plot(df):
     with sns.plotting_context(
         "talk",
         rc={
-            "xtick.labelsize": 12,
-            "ytick.labelsize": 12,
-            "axes.labelsize": 14,
-            "xtick.majorsize": 1,
-            "ytick.majorsize": 1,
+            # "xtick.labelsize": 12,
+            # "ytick.labelsize": 12,
+            # "axes.labelsize": 14,
+            # "xtick.majorsize": 1,
+            # "ytick.majorsize": 1,
+            "font.sans-serif": "inter",
+            "savefig.dpi": 300,
         },
     ):
-        fig = plt.figure(figsize=(6, 8))
+        fig = plt.figure()
         g = sns.FacetGrid(df.sort_values("TF"), col="TF", col_wrap=4)
         g.map_dataframe(plot_motif_scores)
         fig.subplots_adjust(hspace=0.05, wspace=0.05)
@@ -151,6 +160,32 @@ def close_plot():
     plt.cla()
     plt.clf()
     plt.close()
+
+
+def read_pwm(pwm_in):
+    """Read PWM file."""
+    with open(pwm_in, "r") as pwm_handle:
+        try:
+            return motifs.read(pwm_handle, "pfm-four-columns")
+        except:
+            logging.warning("Unable to open file: %s", pwm_in)
+            return None
+
+
+def score_motif(motif_fn, background={"G": 0.35, "A": 0.15, "T": 0.15, "C": 0.35}):
+    motif_pwm = read_pwm(motif_fn)
+    if motif_pwm is None:
+        return np.nan
+    motif_pwm.background = background
+    motif_pwm.pseudocounts = {k: 0.25 * v for k, v in background.items()}
+    info = 0
+    for nt, pos in itertools.product("GATC", range(motif_pwm.length)):
+        info += (
+            -1
+            * motif_pwm.pwm[nt][pos]
+            * np.log(motif_pwm.pwm[nt][pos] / motif_pwm.background[nt])
+        )
+    return info
 
 
 if __name__ == "__main__":
@@ -177,55 +212,70 @@ if __name__ == "__main__":
             output_dir.mkdir()
         pident_threshold = snakemake.params["pident"]
         motif_table = Path(snakemake.output["motif_table"])
-        # set up motif table file
-        if motif_table.exists():
-            motif_table.unlink()
-        selected = dbd_df.query("pident >= @pident_threshold")
-        missed_TFs = set(dbd_df.TF) - set(selected.TF)
-        motif_scores = {"motif": [], "score": [], "TF": []}
-        best_motifs = {}
-        for idx in selected.index:
-            motif = selected.loc[idx, "motif_id"]
-            gene = selected.loc[idx, "TF"]
-            with open(input_dir.joinpath(motif + ".txt"), "r") as handle:
-                try:
-                    pwm = motifs.read(handle, "pfm-four-columns")
-                except:
-                    logging.warning(
-                        "Unable to open file: %s", input_dir.joinpath(motif + ".txt")
-                    )
-                    continue
-                pwm.id = pwm.consensus
-                pwm.name = pwm.consensus
-                pwm_info = score_motif(pwm)
-                motif_scores["motif"].append(motif)
-                motif_scores["score"].append(pwm_info)
-                motif_scores["TF"].append(gene)
-                if gene not in motif_scores:
-                    best_motifs[gene] = {"motif": pwm, "info": pwm_info, "name": motif}
-                if pwm_info < best_motifs[gene]["info"]:
-                    best_motifs[gene] = {"motif": pwm, "info": pwm_info, "name": motif}
 
-        # plot motif scores
-        score_df = pd.DataFrame(motif_scores)
-        score_plot(score_df)
+        with open(motif_table, "w") as handle:
+            handle.write("matrix_id,base_id,gene" + "\n")
+        dbd_df.set_index("motif_id", inplace=True)
+        dbd_df["score"] = dbd_df.apply(
+            lambda x: score_motif(str(input_dir.joinpath(x.name + ".txt"))), axis=1
+        )
+        dbd_df = dbd_df[~dbd_df.score.isna()]
+
+        purps = dbd_df.assign(
+            is_purp=lambda df_: df_.index.str.match("Strongylocentrotus_purpuratus")
+        ).query("is_purp")
+
+        selected = (
+            (
+                dbd_df.query("pident >= @pident_threshold").sort_values(
+                    ["pident", "score"], ascending=[True, False]
+                )
+                # .groupby("query_id")
+                # .tail(10)
+                # .sort_values("score", ascending=False)
+                # .groupby("query_id")
+                # .tail(1)
+            )
+            .reset_index()
+            .set_index("motif_id")
+        )
+        selected.to_csv(snakemake.output["score_df"])
+        # denote selected motifs, plot
+        dbd_df["selected"] = dbd_df.index.isin(selected.index)
+        score_plot(dbd_df.query("pident >= @pident_threshold"))
         plt.savefig(snakemake.output["score_plot"])
         close_plot()
 
-        for tf, each in best_motifs.items():
-            # have to scale counts bc otherwise all 0 in clusterbuster format
-            scale_counts(each["motif"], 100)
-            with open(output_dir.joinpath(each["name"] + ".cb"), "w") as handle:
-                handle.write(each["motif"].format("clusterbuster"))
-            with open(motif_table, "a") as handle:
-                handle.write(
-                    ",".join(
-                        [
-                            each["name"],
-                            "_".join(each["name"].split("_")[2:]),
-                            tf.replace("Lv-", "Sp-"),
-                        ]
-                    )
-                    + "\n"
-                )
-                # handle.write(get_line(motif, gene, pwm.consensus))
+        retained_motifs = list(set(purps.index.values).union(selected.index.values))
+        missed_TFs = set(dbd_df.TF) - set(dbd_df.loc[retained_motifs, "TF"])
+        logging.warning("No motif selected for %s", ", ".join(missed_TFs))
+
+        # convert normalized PWMs to clusterbuster format for retained motifs
+        # log ids + gene names
+        rows = []
+        for motif in retained_motifs:
+            gene = dbd_df.loc[motif, "TF"]
+            if not isinstance(gene, str):
+                gene = gene.values[0]
+            pwm = read_pwm(input_dir.joinpath(motif + ".txt"))
+            if pwm is None:
+                continue
+            pwm.id = pwm.consensus
+            pwm.name = pwm.consensus
+            scale_counts(pwm, 100)
+            with open(output_dir.joinpath(motif + ".cb"), "w") as pwm_out:
+                pwm_out.write(pwm.format("clusterbuster"))
+            rows.append(
+                [motif, "_".join(motif.split("_")[2:]), gene.replace("Lv-", "Sp-")]
+            )
+
+        # join retained motifs with extra motifs
+        pd.concat(
+            [
+                pd.DataFrame(rows, columns=["matrix_id", "base_id", "gene"]),
+                pd.read_csv(snakemake.input["extra_motifs_csv"]),
+            ]
+        ).to_csv(motif_table, index=None)
+
+        for each in Path(snakemake.input["extra_motifs"]).glob("*.cb"):
+            shutil.copy(each, output_dir.joinpath(each.stem + ".cb"))

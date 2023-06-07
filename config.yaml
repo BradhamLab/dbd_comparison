@@ -5,7 +5,7 @@ annos: /projectnb/bradham/data/ReferenceSequences/wray-genome/annotations/master
 hmm: /projectnb/bradham/PFAM/Pfam-A.hmm
 eval: 0.001
 input:
-  id_to_name: id_to_tf.csv
+  id_to_name: data/all_tf_models.csv
   motif_dir: "data/informative_motifs"
 allowed_domains:
   domain_regex: ["^zf-", "T-box", "^bZIP", "^Homeobox", "^GATA", "DNA-bind", "HMG-box", "Winged helix"]

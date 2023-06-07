@@ -23,12 +23,13 @@ rule all:
 
 rule extract_protein_fasta:
     input:
-        ids=config["tf_ids"],
+        table=config["input"]["id_to_name"],
         fasta=config["protein_fasta"],
     output:
         "output/tf_proteins.fasta",
     shell:
-        "seqtk subseq {input.fasta} {input.ids} > {output}"
+        "tail -n +2 {input.table} | cut -d',' -f1 | "
+        "seqtk subseq {input.fasta} - > {output}"
 
 
 rule find_uniprot_orthologues:
@@ -257,17 +258,21 @@ rule compare_dbds:
 
 rule select_motifs:
     input:
-        id2name="all_tf_models.csv",  #update this with updated thing from cistarget
+        id2name=config["input"]["id_to_name"],
         csv="output/dbd_alignment.csv",
         motif_dir="data/cisbp_motifs",
+        extra_motifs="data/extra_motifs",
+        extra_motifs_csv="data/extra_motifs_table.csv",
     log:
         "logs/motif_selection.log",
     params:
         pident=0.7,
+        # most_informative=False,
     output:
-        motif_dir=directory("output/retained_motifs"),
-        motif_table="output/motif_table.csv",
-        pident_plot="output/pident_distributions.png",
-        score_plot="output/motif_scores.png",
+        motif_dir=directory("tmp/output/tmp/retained_motifs"),
+        motif_table="tmp/output/tmp/motif_table.csv",
+        score_df="tmp/output/tmp/motif_scores.csv",
+        pident_plot="tmp/output/tmp/pident_distributions.svg",
+        score_plot="tmp/output/tmp/motif_scores.svg",
     script:
         "scripts/format_and_filter_motifs.py"
